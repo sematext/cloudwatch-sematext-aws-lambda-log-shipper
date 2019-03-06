@@ -1,0 +1,117 @@
+service: lambda-cwlogs-to-logsene
+
+plugins:
+  - serverless-iam-roles-per-function
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  secrets: ${file(secrets.json)}
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  region: us-east-1
+  versionFunctions: false
+
+functions:
+  shipper:
+    handler: shipper.handler
+    description: Sends CloudWatch logs from Kinesis to Sematext Elastic Search API
+    memorySize: 128
+    timeout: 3
+    events:
+      - stream:
+          type: kinesis
+          arn:
+            Fn::GetAtt:
+              - LogsKinesisStream
+              - Arn
+    environment:
+      LOGSENE_TOKEN: ${self:custom.secrets.LOGSENE_TOKEN}
+      LOGS_BULK_SIZE: 100
+      LOG_INTERVAL: 2000
+  
+  subscriber:
+    handler: subscriber.handler
+    description: Subscribe all CloudWatch log groups to Kinesis
+    memorySize: 128
+    timeout: 30
+    events:
+      - http:
+          path: subscribe
+          method: get
+      - cloudwatchEvent:
+          event:
+            source:
+              - aws.logs
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - logs.amazonaws.com
+              eventName:
+                - CreateLogGroup
+      - schedule:
+          rate: rate(60 minutes)
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "iam:PassRole"
+          - "sts:AssumeRole"
+          - "logs:PutSubscriptionFilter"
+          - "logs:DeleteSubscriptionFilter"
+          - "logs:DescribeSubscriptionFilters"
+          - "logs:DescribeLogGroups"
+          - "logs:PutRetentionPolicy"
+        Resource: "*"
+    environment:
+      filterName: ${self:custom.stage}-${self:provider.region}
+      region: ${self:provider.region}
+      shipperFunctionName: "shipper"
+      subscriberFunctionName: "subscriber"
+      prefix: "/aws/lambda"
+      retentionDays: "7"
+      kinesisArn: 
+        Fn::GetAtt:
+          - LogsKinesisStream
+          - Arn
+      roleArn: 
+        Fn::GetAtt:
+          - CloudWatchLogsRole
+          - Arn
+
+resources:
+  Resources:
+    LogsKinesisStream:
+      Type: AWS::Kinesis::Stream
+      Properties: 
+        Name: ${self:service}-${self:custom.stage}-logs
+        ShardCount: 1
+
+    CloudWatchLogsRole:
+      Type: AWS::IAM::Role
+      Properties: 
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement: 
+            - Effect: Allow
+              Principal: 
+                Service: 
+                  - logs.amazonaws.com
+              Action: 
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: root
+            PolicyDocument: 
+              Version: "2012-10-17"
+              Statement: 
+                - Effect: Allow
+                  Action: 
+                    - kinesis:PutRecords
+                    - kinesis:PutRecord
+                  Resource:
+                    Fn::GetAtt:
+                      - LogsKinesisStream
+                      - Arn
+        RoleName: ${self:service}-${self:custom.stage}-cloudwatchrole

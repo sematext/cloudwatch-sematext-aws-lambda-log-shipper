@@ -1,0 +1,17 @@
+{
+  "name": "lambda-cwlogs-to-es",
+  "version": "1.0.0",
+  "description": "",
+  "main": "logshipper.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "logsene-js": "^1.1.56",
+    "serverless-iam-roles-per-function": "^1.0.1",
+    "zlib": "^1.0.5"
+  }
+}
