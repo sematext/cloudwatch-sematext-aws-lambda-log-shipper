@@ -48,7 +48,7 @@ const checkLogError = (log) => {
 const splitStructuredLog = (message) => {
   const parts = message.split('\t', 3)
   return {
-    timestamp: parts[0],
+    execTimestamp: parts[0],
     requestId: parts[1],
     msg: parts[2]
   }
@@ -68,7 +68,7 @@ const parseLog = (functionName, functionVersion, message, awsRegion) => {
 
   // if log is structured
   if (message.match(regexStructuredLog)) {
-    const { timestamp, requestId, msg } = splitStructuredLog(message)
+    const { execTimestamp, requestId, msg } = splitStructuredLog(message)
     return checkLogError({
       message: msg,
       function: functionName,
@@ -76,7 +76,7 @@ const parseLog = (functionName, functionVersion, message, awsRegion) => {
       region: awsRegion,
       type: 'lambda',
       severity: 'debug',
-      timestamp: timestamp,
+      execTimestamp: execTimestamp,
       requestId: requestId
     })
   } else { // if log is NOT structured
