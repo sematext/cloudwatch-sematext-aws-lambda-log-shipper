@@ -28,7 +28,7 @@ functions:
               - LogsKinesisStream
               - Arn
     environment:
-      LOGSENE_TOKEN: ${self:custom.secrets.LOGSENE_TOKEN}
+      LOGS_TOKEN: ${self:custom.secrets.LOGS_TOKEN}
       LOGS_BULK_SIZE: 100
       LOG_INTERVAL: 2000
   

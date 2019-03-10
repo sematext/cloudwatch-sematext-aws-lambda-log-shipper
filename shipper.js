@@ -1,6 +1,6 @@
 const Zlib = require('zlib')
 const Logsene = require('logsene-js')
-const logger = new Logsene(process.env.LOGSENE_TOKEN)
+const logger = new Logsene(process.env.LOGS_TOKEN)
 const errorPatterns = [
   'error'
 ]
