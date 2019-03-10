@@ -79,7 +79,7 @@ const parseLog = (functionName, functionVersion, message, awsRegion) => {
       timestamp: timestamp,
       requestId: requestId
     })
-  } else { // when log is NOT structured
+  } else { // if log is NOT structured
     return checkLogError({
       message: message,
       function: functionName,
