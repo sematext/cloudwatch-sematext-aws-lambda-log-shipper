@@ -12,21 +12,46 @@ const timeoutErrorPatterns = [
   'task timed out',
   'process exited before completing'
 ]
-const coldStartPatterns = [
-  'Init Duration:'
-]
+/**
+ * Sample of a structured log
+ * ***************************************************************************
+ * Timestamp                RequestId                            Message
+ * 2019-03-08T15:58:45.736Z 53499d7f-60f1-476a-adc8-1e6c6125a67c Hello World!
+ * ***************************************************************************
+ */
+const structuredLogPattern = '[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9][0-9][0-9]Z([ \t])[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}([ \t])(.*)'
 const regexError = new RegExp(errorPatterns.join('|'), 'gi')
 const regexConfigurationError = new RegExp(configurationErrorPatterns.join('|'), 'gi')
 const regexTimeoutError = new RegExp(timeoutErrorPatterns.join('|'), 'gi')
-
-const lambdaVersion = (logStream) => {
-  const start = logStream.indexOf('[')
-  const end = logStream.indexOf(']')
-  return logStream.substring(start + 1, end)
+const regexStructuredLog = new RegExp(structuredLogPattern)
+const lambdaVersion = (logStream) => logStream.substring(logStream.indexOf('[') + 1, logStream.indexOf(']'))
+const lambdaName = (logGroup) => logGroup.split('/').reverse()[0]
+const checkLogError = (log) => {
+  if (log.message.match(regexError)) {
+    log.severity = 'error'
+    log.error = {
+      type: 'runtime'
+    }
+  } else if (log.message.match(regexConfigurationError)) {
+    log.severity = 'error'
+    log.error = {
+      type: 'configuration'
+    }
+  } else if (log.message.match(regexTimeoutError)) {
+    log.severity = 'error'
+    log.error = {
+      type: 'timeout'
+    }
+  }
+  return log
 }
-
-const lambdaName = (logGroup) => {
-  return logGroup.split('/').reverse()[0]
+const splitStructuredLog = (message) => {
+  const parts = message.split('\t', 3)
+  return {
+    timestamp: parts[0],
+    requestId: parts[1],
+    msg: parts[2]
+  }
 }
 
 /**
@@ -35,48 +60,35 @@ const lambdaName = (logGroup) => {
 const parseLog = (functionName, functionVersion, message, awsRegion) => {
   if (
     message.startsWith('START RequestId') ||
-    message.startsWith('END RequestId')
+    message.startsWith('END RequestId') ||
+    message.startsWith('REPORT RequestId')
   ) {
     return
   }
 
-  const log = {
-    message: message,
-    function: functionName,
-    version: functionVersion,
-    region: awsRegion,
-    type: 'cloudwatch'
+  // if log is structured
+  if (message.match(regexStructuredLog)) {
+    const { timestamp, requestId, msg } = splitStructuredLog(message)
+    return checkLogError({
+      message: msg,
+      function: functionName,
+      version: functionVersion,
+      region: awsRegion,
+      type: 'lambda',
+      severity: 'debug',
+      timestamp: timestamp,
+      requestId: requestId
+    })
+  } else { // when log is NOT structured
+    return checkLogError({
+      message: message,
+      function: functionName,
+      version: functionVersion,
+      region: awsRegion,
+      type: 'lambda',
+      severity: 'debug'
+    })
   }
-
-  if (message.startsWith('REPORT RequestId')) {
-    log.severity = 'info'
-    if (message.match(coldStartPatterns)) {
-      log.severity = 'info'
-      log.info = {
-        type: 'cold-start'
-      }
-    }
-  } else {
-    log.severity = 'debug'
-    if (message.match(regexError)) {
-      log.severity = 'error'
-      log.error = {
-        type: 'runtime'
-      }
-    } else if (message.match(regexConfigurationError)) {
-      log.severity = 'error'
-      log.error = {
-        type: 'configuration'
-      }
-    } else if (message.match(regexTimeoutError)) {
-      log.severity = 'error'
-      log.error = {
-        type: 'timeout'
-      }
-    }
-  }
-
-  return log
 }
 
 const parseLogs = (event) => {
