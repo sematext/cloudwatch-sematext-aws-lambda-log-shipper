@@ -131,7 +131,6 @@ exports.handler = async (event) => {
     await shipLogs(parseLogs(event))
   } catch (err) {
     console.log(err)
-    return err
   }
   return 'shipper done'
 }
