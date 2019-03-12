@@ -115,22 +115,25 @@ const parseLogs = (event) => {
 }
 
 const shipLogs = async (logs) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (!logs.length) {
-      return reject(new Error('No logs to ship.'))
+      return resolve('No logs to ship.')
     }
     logs.forEach(log => {
       logger.log(log.severity, 'LogseneJS', log)
     })
-    logger.send(() => resolve())
+    logger.send(() => resolve('Logs shipped successfully!'))
   })
 }
 
 exports.handler = async (event) => {
   try {
-    await shipLogs(parseLogs(event))
+    const res = await shipLogs(parseLogs(event))
+    console.log(res)
   } catch (err) {
     console.log(err)
+    return err
+    // TODO: handle err by pushing to SNS, and consume by another Lambda to retry with DLQ
   }
   return 'shipper done'
 }
