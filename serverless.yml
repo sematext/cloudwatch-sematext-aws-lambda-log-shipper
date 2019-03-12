@@ -11,7 +11,7 @@ provider:
   name: aws
   runtime: nodejs8.10
   stage: dev
-  region: us-east-1
+  region: ${self:custom.secrets.REGION, 'us-east-1'}
   versionFunctions: false
 
 functions:
