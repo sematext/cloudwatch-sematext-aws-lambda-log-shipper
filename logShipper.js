@@ -135,5 +135,5 @@ exports.handler = async (event) => {
     return err
     // TODO: handle err by pushing to SNS, and consume by another Lambda to retry with DLQ
   }
-  return 'shipper done'
+  return 'log shipper done'
 }
