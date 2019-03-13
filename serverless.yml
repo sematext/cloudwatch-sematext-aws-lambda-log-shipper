@@ -15,8 +15,8 @@ provider:
   versionFunctions: false
 
 functions:
-  logShipper:
-    handler: logShipper.handler
+  shipper:
+    handler: shipper.handler
     description: Sends CloudWatch logs from Kinesis to Sematext Elastic Search API
     memorySize: 128
     timeout: 3
@@ -35,23 +35,6 @@ functions:
       LOGS_RECEIVER_URL: ${self:custom.secrets.LOGS_RECEIVER_URL}
       LOGS_BULK_SIZE: 100
       LOG_INTERVAL: 2000
-  
-  metricShipper:
-    handler: metricShipper.handler
-    description: Sends CloudWatch logs from Kinesis to Sematext Elastic Search API
-    memorySize: 128
-    timeout: 3
-    events:
-      - stream:
-          type: kinesis
-          arn:
-            Fn::GetAtt:
-              - LogsKinesisStream
-              - Arn
-          batchSize: ${self:custom.secrets.BATCH_SIZE}
-          startingPosition: LATEST
-          enabled: true
-    environment:
       SPM_TOKEN: ${self:custom.secrets.SPM_TOKEN}
       SPM_RECEIVER_URL: ${self:custom.secrets.SPM_RECEIVER_URL}
   
