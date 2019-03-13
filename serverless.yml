@@ -11,7 +11,7 @@ provider:
   name: aws
   runtime: nodejs8.10
   stage: dev
-  region: ${self:custom.secrets.REGION, 'us-east-1'}
+  region: ${self:custom.secrets.REGION, "us-east-1"}
   versionFunctions: false
 
 functions:
@@ -93,7 +93,7 @@ functions:
       region: ${self:provider.region}
       shipperFunctionName: "shipper"
       subscriberFunctionName: "subscriber"
-      prefix: "/aws/lambda"
+      prefix: ${self:custom.secrets.PREFIX, "/aws/lambda"}
       retentionDays: ${self:custom.secrets.LOG_GROUP_RETENTION_IN_DAYS}
       kinesisArn: 
         Fn::GetAtt:
