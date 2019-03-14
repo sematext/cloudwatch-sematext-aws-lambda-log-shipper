@@ -52,7 +52,7 @@ const getNanoSecondTimestamp = () => {
  */
 const parseMetric = (functionName, functionVersion, message, awsRegion) => {
   if (message.startsWith('REPORT RequestId:')) {
-    const parts = message.split('\t', 5)
+    const parts = message.split('\t')
 
     const requestId = parseStringWith(/REPORT RequestId: (.*)/i, parts[0])
     const duration = parseFloatWith(/Duration: (.*) ms/i, parts[1]) // in ms
@@ -87,46 +87,74 @@ const checkLogError = (log) => {
 const splitStructuredLog = (message) => {
   const parts = message.split('\t', 3)
   return {
-    execTimestamp: parts[0],
+    timestamp: parts[0],
     requestId: parts[1],
-    msg: parts[2]
+    message: parts[2]
   }
 }
 
 /**
  * Create payload for Logsene API
  */
-const parseLog = (functionName, functionVersion, message, awsRegion) => {
+const parseLog = (functionName, functionVersion, logEventMessage, awsRegion) => {
   if (
-    message.startsWith('START RequestId') ||
-    message.startsWith('END RequestId') ||
-    message.startsWith('REPORT RequestId')
+    logEventMessage.startsWith('START RequestId') ||
+    logEventMessage.startsWith('END RequestId') ||
+    logEventMessage.startsWith('REPORT RequestId')
   ) {
     return
   }
 
-  // if log is structured
-  if (message.match(regexStructuredLog)) {
-    const { execTimestamp, requestId, msg } = splitStructuredLog(message)
+  try {
+    // Message is JSON
+
+    const { requestId, timestamp, ...parsedMessage } = JSON.parse(logEventMessage)
     return checkLogError({
-      message: msg,
-      function: functionName,
-      version: functionVersion,
-      region: awsRegion,
-      type: 'lambda',
-      severity: 'debug',
-      execTimestamp: execTimestamp,
-      requestId: requestId
-    })
-  } else { // if log is NOT structured
-    return checkLogError({
-      message: message,
-      function: functionName,
-      version: functionVersion,
+      lambda: {
+        name: functionName,
+        version: functionVersion,
+        timestamp: timestamp,
+        request: {
+          id: requestId
+        }
+      },
+      ...parsedMessage,
       region: awsRegion,
       type: 'lambda',
       severity: 'debug'
     })
+  } catch (error) {
+    // If the JSON.parse() error is thrown the message is NOT a JSON string
+
+    // if log is structured adhering to the structuredLogPattern regex
+    if (logEventMessage.match(regexStructuredLog)) {
+      const { timestamp, requestId, message } = splitStructuredLog(logEventMessage)
+      return checkLogError({
+        message: message,
+        lambda: {
+          name: functionName,
+          version: functionVersion,
+          timestamp: timestamp,
+          request: {
+            id: requestId
+          }
+        },
+        region: awsRegion,
+        type: 'lambda',
+        severity: 'debug'
+      })
+    } else { // if log is NOT structured
+      return checkLogError({
+        message: logEventMessage,
+        lambda: {
+          name: functionName,
+          version: functionVersion
+        },
+        region: awsRegion,
+        type: 'lambda',
+        severity: 'debug'
+      })
+    }
   }
 }
 
