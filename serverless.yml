@@ -11,7 +11,7 @@ provider:
   name: aws
   runtime: nodejs8.10
   stage: dev
-  region: us-east-1
+  region: ${self:custom.secrets.REGION, 'us-east-1'}
   versionFunctions: false
 
 functions:
@@ -27,8 +27,11 @@ functions:
             Fn::GetAtt:
               - LogsKinesisStream
               - Arn
+          batchSize: ${self:custom.secrets.BATCH_SIZE}
+          startingPosition: LATEST
+          enabled: true
     environment:
-      LOGSENE_TOKEN: ${self:custom.secrets.LOGSENE_TOKEN}
+      LOGS_TOKEN: ${self:custom.secrets.LOGS_TOKEN}
       LOGS_BULK_SIZE: 100
       LOG_INTERVAL: 2000
   
@@ -71,7 +74,7 @@ functions:
       shipperFunctionName: "shipper"
       subscriberFunctionName: "subscriber"
       prefix: "/aws/lambda"
-      retentionDays: "7"
+      retentionDays: ${self:custom.secrets.LOG_GROUP_RETENTION_IN_DAYS}
       kinesisArn: 
         Fn::GetAtt:
           - LogsKinesisStream
@@ -87,7 +90,8 @@ resources:
       Type: AWS::Kinesis::Stream
       Properties: 
         Name: ${self:service}-${self:custom.stage}-logs
-        ShardCount: 1
+        ShardCount: ${self:custom.secrets.KINESIS_SHARD_COUNT}
+        RetentionPeriodHours: ${self:custom.secrets.KINESIS_RETENTION_IN_HOURS}
 
     CloudWatchLogsRole:
       Type: AWS::IAM::Role
