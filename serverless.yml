@@ -55,8 +55,6 @@ functions:
                 - logs.amazonaws.com
               eventName:
                 - CreateLogGroup
-      - schedule:
-          rate: rate(60 minutes)
     iamRoleStatements:
       - Effect: "Allow"
         Action:
