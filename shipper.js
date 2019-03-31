@@ -110,14 +110,10 @@ const parseLog = (functionName, functionVersion, logEventMessage, awsRegion) => 
 
     const { requestId, timestamp, ...parsedMessage } = JSON.parse(logEventMessage)
     return checkLogError({
-      lambda: {
-        name: functionName,
-        version: functionVersion,
-        timestamp: timestamp,
-        request: {
-          id: requestId
-        }
-      },
+      'function.name': functionName,
+      'function.version': functionVersion,
+      'function.timestamp': timestamp,
+      'function.request.id': requestId,
       ...parsedMessage,
       region: awsRegion,
       type: 'lambda',
@@ -130,26 +126,20 @@ const parseLog = (functionName, functionVersion, logEventMessage, awsRegion) => 
     if (logEventMessage.match(regexStructuredLog)) {
       const { timestamp, requestId, message } = splitStructuredLog(logEventMessage)
       return checkLogError({
+        'function.name': functionName,
+        'function.version': functionVersion,
+        'function.timestamp': timestamp,
+        'function.request.id': requestId,
         message: message,
-        lambda: {
-          name: functionName,
-          version: functionVersion,
-          timestamp: timestamp,
-          request: {
-            id: requestId
-          }
-        },
         region: awsRegion,
         type: 'lambda',
         severity: 'debug'
       })
     } else { // if log is NOT structured
       return checkLogError({
+        'function.name': functionName,
+        'function.version': functionVersion,
         message: logEventMessage,
-        lambda: {
-          name: functionName,
-          version: functionVersion
-        },
         region: awsRegion,
         type: 'lambda',
         severity: 'debug'
@@ -159,14 +149,19 @@ const parseLog = (functionName, functionVersion, logEventMessage, awsRegion) => 
 }
 
 const parseRecords = (event) => {
-  const logs = []
-  const metrics = []
+  const rec = {
+    logs: [],
+    metrics: [],
+    recordCounter: 0,
+    logEventCounter: 0
+  }
 
   event.Records.forEach(record => {
     const payload = Buffer.from(record.kinesis.data, 'base64')
     const json = (Zlib.gunzipSync(payload)).toString('utf8')
     const data = JSON.parse(json)
     if (data.messageType === 'CONTROL_MESSAGE') { return }
+    rec.recordCounter += 1
 
     const functionName = lambdaName(data.logGroup)
     const functionVersion = lambdaVersion(data.logStream)
@@ -175,20 +170,19 @@ const parseRecords = (event) => {
     data.logEvents.forEach(logEvent => {
       const log = parseLog(functionName, functionVersion, logEvent.message, awsRegion)
       if (log) {
-        logs.push(log)
+        rec.logs.push(log)
       }
 
       const metric = parseMetric(functionName, functionVersion, logEvent.message, awsRegion)
       if (metric) {
-        metrics.push(metric)
+        rec.metrics.push(metric)
       }
+
+      rec.logEventCounter += 1
     })
   })
 
-  return {
-    logs,
-    metrics
-  }
+  return rec
 }
 
 const shipMetrics = async (metrics) => {
@@ -203,8 +197,7 @@ const shipMetrics = async (metrics) => {
     },
     responseType: 'text'
   }
-  const res = await Promise.all(metrics.map(m => axios.post(spmReceiverUrl, m, config)))
-  console.log('Metrics res: ', res)
+  await Promise.all(metrics.map(m => axios.post(spmReceiverUrl, m, config)))
   return 'Metrics shipped successfully!'
 }
 
@@ -222,10 +215,14 @@ const shipLogs = async (logs) => {
 
 exports.handler = async (event) => {
   try {
-    const { logs, metrics } = parseRecords(event)
+    const { logs, metrics, recordCounter, logEventCounter } = parseRecords(event)
     const l = await shipLogs(logs)
     const m = await shipMetrics(metrics)
-    console.log(l, m)
+    console.log('Logs response: ', l)
+    console.log('Metrics response: ', m)
+    console.log('Number of records: ', recordCounter)
+    console.log('Number of logEvents: ', logEventCounter)
+    console.log('Number of shipped logs: ', logs.length)
   } catch (err) {
     console.log(err)
     return err
