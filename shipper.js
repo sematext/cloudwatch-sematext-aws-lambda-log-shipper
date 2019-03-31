@@ -4,6 +4,7 @@ const logger = new Logsene(process.env.LOGS_TOKEN)
 const axios = require('axios')
 const spmToken = process.env.SPM_TOKEN
 const spmReceiverUrl = process.env.SPM_RECEIVER_URL
+const region = process.env.region
 const errorPatterns = [
   'error'
 ]
@@ -46,6 +47,8 @@ const parseFloatWithAndConvertToBytes = (regex, input) => {
 const getNanoSecondTimestamp = () => {
   return (new Date()).getTime() * 1000000 // to get ns timestamp
 }
+const getISOTimestamp = () => new Date().toISOString()
+const clearLogBuffer = async () => new Promise(resolve => logger.send(() => resolve()))
 
 /**
  * Create payload for SPM API
@@ -169,15 +172,9 @@ const parseRecords = (event) => {
 
     data.logEvents.forEach(logEvent => {
       const log = parseLog(functionName, functionVersion, logEvent.message, awsRegion)
-      if (log) {
-        rec.logs.push(log)
-      }
-
       const metric = parseMetric(functionName, functionVersion, logEvent.message, awsRegion)
-      if (metric) {
-        rec.metrics.push(metric)
-      }
-
+      if (log) { rec.logs.push(log) }
+      if (metric) { rec.metrics.push(metric) }
       rec.logEventCounter += 1
     })
   })
@@ -186,9 +183,7 @@ const parseRecords = (event) => {
 }
 
 const shipMetrics = async (metrics) => {
-  if (!metrics.length) {
-    return 'No metrics to ship.'
-  }
+  if (!metrics.length) { return 'No metrics to ship.' }
 
   const config = {
     headers: {
@@ -203,28 +198,37 @@ const shipMetrics = async (metrics) => {
 
 const shipLogs = async (logs) => {
   return new Promise((resolve) => {
-    if (!logs.length) {
-      return resolve('No logs to ship.')
-    }
-    logs.forEach(log => {
-      logger.log(log.severity, 'LogseneJS', log)
-    })
+    if (!logs.length) { return resolve('No logs to ship.') }
+    logs.forEach(log => logger.log(log.severity, 'LogseneJS', log))
     logger.send(() => resolve('Logs shipped successfully!'))
   })
 }
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
   try {
     const { logs, metrics, recordCounter, logEventCounter } = parseRecords(event)
     const l = await shipLogs(logs)
     const m = await shipMetrics(metrics)
-    console.log('Logs response: ', l)
-    console.log('Metrics response: ', m)
-    console.log('Number of records: ', recordCounter)
-    console.log('Number of logEvents: ', logEventCounter)
-    console.log('Number of shipped logs: ', logs.length)
+
+    const shipperLog = {
+      'function.name': context.functionName,
+      'function.version': context.functionVersion,
+      'function.timestamp': getISOTimestamp(),
+      'function.request.id': context.awsRequestId,
+      region: region,
+      type: 'shipper',
+      severity: 'info',
+      'logs.response': l,
+      'metrics.response': m,
+      'records.count': recordCounter,
+      'logevents.count': logEventCounter,
+      'shippedlogs.count': logs.length
+    }
+    logger.log(shipperLog.severity, 'Shipper executed successfully!', shipperLog)
+    await clearLogBuffer()
   } catch (err) {
-    console.log(err)
+    logger.log('error', 'Shipper executed with error!', err)
+    await clearLogBuffer()
     return err
     // TODO: handle err by pushing to SNS, and consume by another Lambda to retry with DLQ
   }

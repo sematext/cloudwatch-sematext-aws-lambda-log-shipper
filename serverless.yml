@@ -37,6 +37,7 @@ functions:
       LOG_INTERVAL: 2000
       SPM_TOKEN: ${self:custom.secrets.SPM_TOKEN}
       SPM_RECEIVER_URL: ${self:custom.secrets.SPM_RECEIVER_URL}
+      region: ${self:provider.region}
   
   subscriber:
     handler: subscriber.handler
@@ -58,8 +59,6 @@ functions:
                 - logs.amazonaws.com
               eventName:
                 - CreateLogGroup
-      # - schedule:
-      #     rate: rate(60 minutes)
     iamRoleStatements:
       - Effect: "Allow"
         Action:
