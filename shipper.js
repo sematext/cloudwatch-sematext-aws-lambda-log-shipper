@@ -113,7 +113,7 @@ const parseLog = (functionName, functionVersion, logEventMessage, awsRegion) => 
     return checkLogError({
       'function.name': functionName,
       'function.version': functionVersion,
-      'function.timestamp': timestamp,
+      '@timestamp': timestamp,
       'function.request.id': requestId,
       ...parsedMessage,
       region: awsRegion,
@@ -129,7 +129,7 @@ const parseLog = (functionName, functionVersion, logEventMessage, awsRegion) => 
       return checkLogError({
         'function.name': functionName,
         'function.version': functionVersion,
-        'function.timestamp': timestamp,
+        '@timestamp': timestamp,
         'function.request.id': requestId,
         message: message,
         region: awsRegion,
