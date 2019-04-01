@@ -7,19 +7,13 @@ const roleArn = process.env.roleArn
 const filterName = process.env.filterName
 const retentionDays = process.env.retentionDays
 const shipperFunctionName = process.env.shipperFunctionName
-const filterPattern = process.env.filterPattern
-// const filterPattern = ''
-// const filterPattern = '[...]'
-// const filterPattern = '[..., timestamp, request, event, status_code]'
-// const filterPattern = '[timestamp=*Z, request_id="*-*", event]'
+const filterPattern = ''
 
-const setRetentionPolicy = async (logGroupName) => {
-  const params = {
+const setRetentionPolicy = async (logGroupName) =>
+  cloudWatchLogs.putRetentionPolicy({
     logGroupName: logGroupName,
     retentionInDays: retentionDays
-  }
-  await cloudWatchLogs.putRetentionPolicy(params).promise()
-}
+  }).promise()
 
 const listLogGroups = async (acc, nextToken) => {
   const req = {

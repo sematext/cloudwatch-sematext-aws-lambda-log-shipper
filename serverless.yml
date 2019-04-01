@@ -71,7 +71,6 @@ functions:
         Resource: "*"
     environment:
       filterName: ${self:custom.stage}-${self:provider.region}
-      filterPattern: ${self:custom.secrets.FILTER_PATTERN, ""}
       region: ${self:provider.region}
       shipperFunctionName: "shipper"
       subscriberFunctionName: "subscriber"
