@@ -37,7 +37,6 @@ functions:
       LOG_INTERVAL: 2000
       SPM_TOKEN: ${self:custom.secrets.SPM_TOKEN}
       SPM_RECEIVER_URL: ${self:custom.secrets.SPM_RECEIVER_URL}
-      region: ${self:provider.region}
   
   subscriber:
     handler: subscriber.handler

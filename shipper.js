@@ -4,7 +4,6 @@ const logger = new Logsene(process.env.LOGS_TOKEN)
 const axios = require('axios')
 const spmToken = process.env.SPM_TOKEN
 const spmReceiverUrl = process.env.SPM_RECEIVER_URL
-const region = process.env.region
 const errorPatterns = [
   'error'
 ]
@@ -47,7 +46,6 @@ const parseFloatWithAndConvertToBytes = (regex, input) => {
 const getNanoSecondTimestamp = () => {
   return (new Date()).getTime() * 1000000 // to get ns timestamp
 }
-const getISOTimestamp = () => new Date().toISOString()
 const clearLogBuffer = async () => new Promise(resolve => logger.send(() => resolve()))
 
 /**
@@ -184,7 +182,6 @@ const parseRecords = (event) => {
 
 const shipMetrics = async (metrics) => {
   if (!metrics.length) { return 'No metrics to ship.' }
-
   const config = {
     headers: {
       'Content-Length': 0,
@@ -197,35 +194,17 @@ const shipMetrics = async (metrics) => {
 }
 
 const shipLogs = async (logs) => {
-  return new Promise((resolve) => {
-    if (!logs.length) { return resolve('No logs to ship.') }
-    logs.forEach(log => logger.log(log.severity, 'LogseneJS', log))
-    logger.send(() => resolve('Logs shipped successfully!'))
-  })
+  if (!logs.length) { return 'No logs to ship.' }
+  logs.forEach(log => logger.log(log.severity, 'LogseneJS', log))
+  await clearLogBuffer()
+  return 'Logs shipped successfully!'
 }
 
-exports.handler = async (event, context) => {
+exports.handler = async (event) => {
   try {
-    const { logs, metrics, recordCounter, logEventCounter } = parseRecords(event)
-    const l = await shipLogs(logs)
-    const m = await shipMetrics(metrics)
-
-    const shipperLog = {
-      'function.name': context.functionName,
-      'function.version': context.functionVersion,
-      'function.timestamp': getISOTimestamp(),
-      'function.request.id': context.awsRequestId,
-      region: region,
-      type: 'shipper',
-      severity: 'info',
-      'logs.response': l,
-      'metrics.response': m,
-      'records.count': recordCounter,
-      'logevents.count': logEventCounter,
-      'shippedlogs.count': logs.length
-    }
-    logger.log(shipperLog.severity, 'Shipper executed successfully!', shipperLog)
-    await clearLogBuffer()
+    const { logs, metrics } = parseRecords(event)
+    await shipLogs(logs)
+    await shipMetrics(metrics)
   } catch (err) {
     logger.log('error', 'Shipper executed with error!', err)
     await clearLogBuffer()
