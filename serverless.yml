@@ -35,8 +35,6 @@ functions:
       LOGS_RECEIVER_URL: ${self:custom.secrets.LOGS_RECEIVER_URL}
       LOGS_BULK_SIZE: 100
       LOG_INTERVAL: 2000
-      SPM_TOKEN: ${self:custom.secrets.SPM_TOKEN}
-      SPM_RECEIVER_URL: ${self:custom.secrets.SPM_RECEIVER_URL}
   
   subscriber:
     handler: subscriber.handler

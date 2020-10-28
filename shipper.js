@@ -1,9 +1,6 @@
 const Zlib = require('zlib')
 const Logsene = require('logsene-js')
 const logger = new Logsene(process.env.LOGS_TOKEN)
-const axios = require('axios')
-const spmToken = process.env.SPM_TOKEN
-const spmReceiverUrl = process.env.SPM_RECEIVER_URL
 const errorPatterns = [
   'error'
 ]
@@ -29,42 +26,7 @@ const regexTimeoutError = new RegExp(timeoutErrorPatterns.join('|'), 'gi')
 const regexStructuredLog = new RegExp(structuredLogPattern)
 const lambdaVersion = (logStream) => logStream.substring(logStream.indexOf('[') + 1, logStream.indexOf(']'))
 const lambdaName = (logGroup) => logGroup.split('/').reverse()[0]
-
-const parseStringWith = (regex, input) => {
-  const res = regex.exec(input)
-  return String(res[1])
-}
-const parseFloatWith = (regex, input) => {
-  const res = regex.exec(input)
-  return parseFloat(res[1])
-}
-const parseFloatWithAndConvertToBytes = (regex, input) => {
-  const res = regex.exec(input)
-  return parseFloat(res[1]) * 1000000
-}
-// BUG: timestamp is not from invocation out of Kinesis, but instead of the metricShipper :(
-const getNanoSecondTimestamp = () => {
-  return (new Date()).getTime() * 1000000 // to get ns timestamp
-}
 const clearLogBuffer = async () => new Promise(resolve => logger.send(() => resolve()))
-
-/**
- * Create payload for SPM API
- */
-const parseMetric = (functionName, functionVersion, message, awsRegion) => {
-  if (message.startsWith('REPORT RequestId:')) {
-    const parts = message.split('\t')
-
-    const requestId = parseStringWith(/REPORT RequestId: (.*)/i, parts[0])
-    const duration = parseFloatWith(/Duration: (.*) ms/i, parts[1]) // in ms
-    const billedDuration = parseFloatWith(/Billed Duration: (.*) ms/i, parts[2]) // in ms
-    const memorySize = parseFloatWithAndConvertToBytes(/Memory Size: (.*) MB/i, parts[3]) // in bytes
-    const memoryUsed = parseFloatWithAndConvertToBytes(/Max Memory Used: (.*) MB/i, parts[4]) // in bytes
-    const timestamp = getNanoSecondTimestamp()
-
-    return `function,token=${spmToken},function.name=${functionName},function.version=${functionVersion},function.request.id=${requestId},aws.region=${awsRegion} duration=${duration},duration.billed=${billedDuration}i,memory.size=${memorySize}i,memory.used=${memoryUsed}i ${timestamp}`
-  }
-}
 
 const checkLogError = (log) => {
   if (log.message.match(regexError)) {
@@ -152,7 +114,6 @@ const parseLog = (functionName, functionVersion, logEventMessage, awsRegion) => 
 const parseRecords = (event) => {
   const rec = {
     logs: [],
-    metrics: [],
     recordCounter: 0,
     logEventCounter: 0
   }
@@ -170,27 +131,13 @@ const parseRecords = (event) => {
 
     data.logEvents.forEach(logEvent => {
       const log = parseLog(functionName, functionVersion, logEvent.message, awsRegion)
-      const metric = parseMetric(functionName, functionVersion, logEvent.message, awsRegion)
+
       if (log) { rec.logs.push(log) }
-      if (metric) { rec.metrics.push(metric) }
       rec.logEventCounter += 1
     })
   })
 
   return rec
-}
-
-const shipMetrics = async (metrics) => {
-  if (!metrics.length) { return 'No metrics to ship.' }
-  const config = {
-    headers: {
-      'Content-Length': 0,
-      'Content-Type': 'text/plain'
-    },
-    responseType: 'text'
-  }
-  await Promise.all(metrics.map(m => axios.post(spmReceiverUrl, m, config)))
-  return 'Metrics shipped successfully!'
 }
 
 const shipLogs = async (logs) => {
@@ -202,9 +149,8 @@ const shipLogs = async (logs) => {
 
 exports.handler = async (event) => {
   try {
-    const { logs, metrics } = parseRecords(event)
+    const { logs } = parseRecords(event)
     await shipLogs(logs)
-    await shipMetrics(metrics)
   } catch (err) {
     logger.log('error', 'Shipper executed with error!', err)
     await clearLogBuffer()
