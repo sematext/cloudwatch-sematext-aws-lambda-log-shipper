@@ -32,15 +32,15 @@ In the `secrets.json`, add values for:
 {
   "LOGS_TOKEN": "your-token",
   "LOGS_RECEIVER_URL": "https://logsene-receiver.sematext.com",
-  // "LOGS_RECEIVER_URL": "https://logsene-receiver.eu.sematext.com", for Sematext's EU region
   "REGION": "us-east-1",
   "BATCH_SIZE": 1000,
   "LOG_GROUP_RETENTION_IN_DAYS": 1,
   "KINESIS_RETENTION_IN_HOURS": 24,
   "KINESIS_SHARD_COUNT": 1,
-  "PREFIX": "/aws/lambda" // or "/ecs" or "/whatever/you/want"
+  "PREFIX": "/aws/lambda"
 }
 ```
+> Note: The `LOGS_RECEIVER_URL` for Sematext's EU region is: `https://logsene-receiver.eu.sematext.com`. The `PREFIX` can be any Log Group in CloudWatch you want, like `/ecs` or `/whatever/you/want`.
 
 ### 2. Deploy
 
