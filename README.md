@@ -9,9 +9,19 @@ Or, you can generate a CloudFormation template by running `serverless package` a
 
 But first, you need to edit some things.
 
-### 0. Install the Serverless Framework
+### 0. Clone This Repo & Install the Serverless Framework
 
-Version 2.4.0 is required as stated [here](https://github.com/functionalone/serverless-iam-roles-per-function/issues/52). We would like to keep IAM roles on a per-function basis. Hence why we require version 2.4.0.
+Clone the repo:
+```bash
+git clone https://github.com/sematext/cloudwatch-sematext-aws-lambda-log-shipper.git
+```
+
+Open the `cloudwatch-sematext-aws-lambda-log-shipper` directory.
+```bash
+cd cloudwatch-sematext-aws-lambda-log-shipper
+```
+
+First install the Serverless Framework. Version 2.4.0 is required as stated [here](https://github.com/functionalone/serverless-iam-roles-per-function/issues/52). We would like to keep IAM roles on a per-function basis. Hence why we require version 2.4.0.
 ```bash
 npm i serverless@2.4.0 -g
 ```
