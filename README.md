@@ -42,7 +42,7 @@ In the `secrets.json`, add values for:
 {
   "LOGS_TOKEN": "your-token",
   "LOGS_RECEIVER_URL": "https://logsene-receiver.sematext.com",
-  "REGION": "us-east-1",
+  "AWS_REGION": "us-east-1",
   "BATCH_SIZE": 1000,
   "LOG_GROUP_RETENTION_IN_DAYS": 1,
   "KINESIS_RETENTION_IN_HOURS": 24,

@@ -11,7 +11,7 @@ provider:
   name: aws
   runtime: nodejs12.x
   stage: dev
-  region: ${self:custom.secrets.REGION, "us-east-1"}
+  region: ${self:custom.secrets.AWS_REGION, "us-east-1"}
   versionFunctions: false
 
 functions:
