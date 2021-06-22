@@ -104,4 +104,4 @@ Initally, you should trigger the subscriber functions to subscribe to any existi
 
 The API Gateway URL can be seen when deploying the Severless framework, or in the AWS console for the subscriber Lambda function while looking at the API Gateway trigger for the Lambda.
 
-In this example, the URL: `https://some-domain.execute-api.us-east-1.amazonaws.com/dev/subscribe` will need to be triggered once to make sure the subscriber has been triggered at least once. The subscriber will be triggered again for any CloudWatch log group that gets created.
+In this example, the URL: `https://some-domain.execute-api.us-east-1.amazonaws.com/dev/subscribe` will need to be called to make sure the subscriber has been triggered at least once to make sure existing log groups are subscribed to Kinesis. The subscriber will be triggered again for any CloudWatch log group that gets created.
