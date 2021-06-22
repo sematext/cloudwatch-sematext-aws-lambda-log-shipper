@@ -58,6 +58,37 @@ In the `secrets.json`, add values for:
 serverless deploy
 ```
 
+Once it's deployed you'll see something like this:
+
+```bash
+[output]
+Serverless: Packaging service...
+Serverless: Excluding development dependencies...
+Serverless: Uploading CloudFormation file to S3...
+Serverless: Uploading artifacts...
+Serverless: Uploading service .zip file to S3 (2.15 MB)...
+Serverless: Validating template...
+Serverless: Updating Stack...
+Serverless: Checking Stack update progress...
+............
+Serverless: Stack update finished...
+Service Information
+service: lambda-cwlogs-to-logsene
+stage: dev
+  region: us-east-1
+stack: lambda-cwlogs-to-logsene-dev
+api keys:
+  None
+endpoints: # API to manually trigger subscriber function
+  GET - https://some-domain.execute-api.us-east-1.amazonaws.com/dev/subscribe
+functions:
+  shipper: lambda-cwlogs-to-logsene-dev-shipper
+  subscriber: lambda-cwlogs-to-logsene-dev-subscriber
+layers:
+  None
+Serverless: Removing old service artifacts from S3…
+```
+
 If you'd rather use CloudFormation:
 
 ```bash
@@ -66,3 +97,11 @@ serverless package
 Info about this command [here](https://www.serverless.com/framework/docs/providers/aws/cli-reference/package/).
 
 You will get the CloudFormation template generated in the `.serverless` folder.
+
+### 3. Run the subscriber function
+
+Initally, you should trigger the subscriber functions to subscribe to any existing log groups.
+
+The API Gateway URL can be seen when deploying the Severless framework, or in the AWS console for the subscriber Lambda function while looking at the API Gateway trigger for the Lambda.
+
+In this example, the URL: `https://some-domain.execute-api.us-east-1.amazonaws.com/dev/subscribe` will need to be triggered once to make sure the subscriber has been triggered at least once. The subscriber will be triggered again for any CloudWatch log group that gets created.
